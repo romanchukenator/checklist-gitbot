@@ -12,26 +12,24 @@ module.exports = app => {
     return context.github.issues.createComment(issueComment);
   })
 
-  app.on(['pull_request.opened','pull_request.reopened' , 'pull_request.edited'], async context => {
+  app.on(['pull_request.opened', 'pull_request.reopened', 'pull_request.edited'], async context => {
     const params = context.issue();
     const {owner, repo, number} = params;
 
     const rulesFile = await context.github.repos.getContent({owner, repo, path: '.github/PR_CHECKLIST.json'});
     const rules = JSON.parse(Buffer.from(rulesFile.data.content, 'base64').toString()).rules;
 
-
     const files = (await context.github.pullRequests.getFiles({owner, repo, number})).data.map(_ => _.filename);
 
-   const matchingRules = rules.filter(rule => {
+    const matchingRules = rules.filter(rule => {
       const regexp = new RegExp(rule.pattern);
 
       return files.some(file => regexp.test(file));
-   });
+    });
 
    const messages = [ '# Code Review Checklist' ];
 
    matchingRules.forEach(rule => {
-
      messages.push('## ' + rule.name);
 
      rule.checks.forEach(check => messages.push(`- [ ] ${check}`));
@@ -41,11 +39,10 @@ module.exports = app => {
 
     await context.github.issues.createComment(prComment);
 
-
     const sha = context.payload.pull_request.head.sha;
 
     return context.github.repos
-    .createStatus({ owner, repo, sha, state: 'pending', context: 'Code Review', description: 'Checklist' });
+      .createStatus({ owner, repo, sha, state: 'pending', context: 'Code Review', description: 'Checklist' });
   })
 
   app.on('issue_comment', async context => {
@@ -54,8 +51,7 @@ module.exports = app => {
       const body = context.payload.comment.body;
 
       // if this is an update to the code review checklist
-      // and all the checkboxes are GTG let's add a happy picture of
-      // bill clinton
+      // and all the checkboxes are GTG let's add a happy picture
       if (body.includes('Code Review Checklist')) {
         const {owner, repo, number} = context.issue();
 
@@ -64,8 +60,9 @@ module.exports = app => {
         if (checklistComplete) {
           console.log('Code Review Checklist is Green');
           const message = [];
-          message.push('# Ur Good to Go!');
-          // message.push(image('Billy Boy', 'https://media.giphy.com/media/l2JJrEx9aRsjNruhi/giphy.gif'));
+          message.push(`# Go for it.`);
+          message.push(image('I like what you did there', 'https://media.giphy.com/media/10PixLlze8fYiI/giphy.gif'));
+
           const params = context.issue({body: message.join('')});
 
           context.github.issues.createComment(params);
@@ -84,8 +81,6 @@ module.exports = app => {
         });
 
       }
-
     }
-
   });
 }

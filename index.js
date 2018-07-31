@@ -57,15 +57,21 @@ module.exports = app => {
 
         const checklistComplete = !body.includes('[ ]');
 
-        if (checklistComplete) {
-          console.log('Code Review Checklist is Green');
           const message = [];
           message.push(`# Go for it.`);
-          message.push(image('I like what you did there', 'https://media.giphy.com/media/10PixLlze8fYiI/giphy.gif'));
+          const image = `!['I like what you did there'](https://media.giphy.com/media/10PixLlze8fYiI/giphy.gif "I like what you did there")`
+          message.push(image);
 
           const params = context.issue({body: message.join('')});
 
+        if (checklistComplete) {
           context.github.issues.createComment(params);
+        } else {
+          // Remove the gif if the checklist is no longer complete
+          const comments = await context.github.issues.getComments({owner, repo, number});
+          const elGify = comments.data.filter((comment)=> comment.body.includes(`# Go for it`));
+          const elGify_id = elGify[0].id;
+          context.github.issues.deleteComment({owner, repo, elGify_id});
         }
 
         // Set the checklist status to green
@@ -79,7 +85,6 @@ module.exports = app => {
           context: 'Code Review',
           description: 'Checklist'
         });
-
       }
     }
   });

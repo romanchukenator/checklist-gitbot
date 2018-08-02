@@ -12,6 +12,17 @@ module.exports = app => {
     return context.github.issues.createComment(issueComment);
   })
 
+  //cleans up the comments when the pr is deleted
+  app.on('pull_request.closed', async context => {
+    const params = context.issue();
+
+    const comments = await context.github.issues.getComments({owner, repo, number});
+    // app.log('comments.data', comments.data);
+    const gifComments = comments.data.filter(comment => comment.body.includes(`Go for it.`));
+
+    return gifComments.forEach(gifComment => context.github.issues.deleteComment({owner, repo, comment_id: gifComment.id}));
+  })
+
   app.on(['pull_request.opened', 'pull_request.reopened', 'pull_request.edited'], async context => {
     const params = context.issue();
     const {owner, repo, number} = params;
@@ -69,9 +80,10 @@ module.exports = app => {
         } else {
           // Remove the gif if the checklist is no longer complete
           const comments = await context.github.issues.getComments({owner, repo, number});
-          const elGify = comments.data.filter((comment)=> comment.body.includes(`# Go for it`));
-          const elGify_id = elGify[0].id;
-          context.github.issues.deleteComment({owner, repo, elGify_id});
+          // app.log('comments.data', comments.data);
+          const gifComments = comments.data.filter(comment => comment.body.includes(`Go for it.`))
+
+          return gifComments.forEach(gifComment => context.github.issues.deleteComment({owner, repo, comment_id: gifComment.id}));
         }
 
         // Set the checklist status to green

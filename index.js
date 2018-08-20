@@ -59,8 +59,7 @@ module.exports = app => {
       owner,
       repo,
       message: 'Ponyfriends test',
-      tree: rootSha,
-      parents: [rootSha]
+      tree: rootSha
     }
 
     const result = await context.github.gitdata.createCommit(commitParams)

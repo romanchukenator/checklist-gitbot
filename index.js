@@ -32,30 +32,44 @@ module.exports = app => {
     const params = context.issue();
     const {owner, repo, number} = params;
 
-    const result = await context.github.pullRequests.getCommits({owner, repo, number});
-    app.log('result', result);
+    const prComments = await context.github.issues.getComments({owner, repo, number});
+    const checklist = prComments.data.filter(comment => comment.body.includes(`Code Review Checklist`));
+    const newChecklist = checklist[0].body;
 
-    // const tagParams = context.issue({owner: "jilucev", repo: "ponyfriends", tag: 'v0.0.1', message: 'AHOY', object: 'ca13d3c1775ff8750772191acd2d521184b3168e', type: 'commit'});
-    // app.log('tagParams', tagParams)
-    // const newTag = await context.github.gitdata.createTag(tagParams);
+    const changelogFile = await context.github.repos.getContent({owner, repo, path: '.github/release_changelog.md'});
+    const changelogFileContents = Buffer.from(changelogFile.data.content, 'base64').toString();
+
+    const content = Buffer.from(changelogFileContents + '\n' + newChecklist).toString('base64');
+
+    const updatefile = await context.github.repos.updateFile(
+      {
+        owner: owner,
+        repo: repo,
+        path: '.github/release_changelog.md',
+        message: "This is a pony changelog",
+        content: content,
+        sha: changelogFile.data.sha
+      }
+    );
+
+    const allCommits = await context.github.repos.getCommits({owner, repo});
+    const rootSha = allCommits.data[0].sha;
+
+    const commitParams = {
+      owner,
+      repo,
+      message: 'Ponyfriends test',
+      tree: rootSha,
+      parents: [rootSha]
+    }
+
+    const result = await context.github.gitdata.createCommit(commitParams)
 
     // context.github is an instance of the @octokit/rest Node.js module,
     // which wraps the GitHub REST API and allows you to do almost anything programmatically that you can do through a web browser.
     const comments = await context.github.issues.getComments({owner, repo, number});
-    // app.log('comments', comments.data[0]);
-    app.log('comments DATA', comments.data);
 
     return comments.data.forEach(comment => context.github.issues.deleteComment({owner, repo, comment_id: comment.id}));
-
-    // const gifComments = comments.data.filter(comment => comment.body.includes(`Go for it.`));
-    // return gifComments.forEach(gifComment => context.github.issues.deleteComment({owner, repo, comment_id: gifComment.id}));
-
-
-    // Note that creating a tag object does not create the reference that makes a tag in Git.
-    // If you want to create an annotated tag in Git, you have to do this call to create the tag object,
-    // and then create the refs/tags/[tag] reference.
-
-
 
   })
 

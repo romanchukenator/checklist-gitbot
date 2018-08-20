@@ -32,18 +32,45 @@ module.exports = app => {
     const params = context.issue();
     const {owner, repo, number} = params;
 
-    const result = await context.github.pullRequests.getCommits({owner, repo, number});
-    app.log('result', result);
+    const changelogFile = await context.github.repos.getContent({owner, repo, path: '.github/release_changelog.md'});
 
-    // const tagParams = context.issue({owner: "jilucev", repo: "ponyfriends", tag: 'v0.0.1', message: 'AHOY', object: 'ca13d3c1775ff8750772191acd2d521184b3168e', type: 'commit'});
-    // app.log('tagParams', tagParams)
-    // const newTag = await context.github.gitdata.createTag(tagParams);
+    const changelogFileContents = Buffer.from(changelogFile.data.content, 'base64').toString();
+
+    app.log('HODOR old content',  changelogFileContents);
+
+    const content = Buffer.from(changelogFileContents + '\nSarah Jessica Parker').toString('base64');
+
+    const updatefile = await context.github.repos.updateFile(
+      {
+        owner: owner,
+        repo: repo,
+        path: '.github/release_changelog.md',
+        message: "This is a pony changelog",
+        content: content,
+        sha: changelogFile.data.sha
+      }
+    );
+
+    // 51ad8db105b5cd85bdb8d2eb0f73bb76368aea94 refs/heads/master
+
+    //write md to changelog
+
+    // const commitParams = {
+    //   owner,
+    //   repo,
+    //   message: 'Ponyfriends test',
+    //   tree: '51ad8db105b5cd85bdb8d2eb0f73bb76368aea94'
+    // }
+    // const result = await context.gitdata.createCommit({owner, repo, message, tree})
+
+    // const result = await context.github.pullRequests.getCommits({owner, repo, number});
+    // app.log('result', result);
 
     // context.github is an instance of the @octokit/rest Node.js module,
     // which wraps the GitHub REST API and allows you to do almost anything programmatically that you can do through a web browser.
     const comments = await context.github.issues.getComments({owner, repo, number});
-    // app.log('comments', comments.data[0]);
-    app.log('comments DATA', comments.data);
+
+    // app.log('comments DATA', comments.data);
 
     return comments.data.forEach(comment => context.github.issues.deleteComment({owner, repo, comment_id: comment.id}));
 
